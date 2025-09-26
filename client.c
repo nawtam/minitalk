@@ -12,37 +12,48 @@
 
 #include "minitalk.h"
 
-void	send_char(int pid, char c)
+static volatile sig_atomic_t	g_ack = 0;
+
+void	ack_handler(int sig)
+{
+	(void)sig;
+	g_ack = 1;
+}
+
+void	send_char(pid_t pid, unsigned char c)
 {
 	int	bit;
 
-	bit = 7;
-	while (bit >= 0)
+	bit = 0;
+	while (bit < 8)
 	{
+		g_ack = 0;
 		if ((c >> bit) & 1)
 			kill(pid, SIGUSR2);
 		else
 			kill(pid, SIGUSR1);
-		usleep(100);
-		bit--;
+		while (!g_ack) /* évite la course signal()/pause() */
+			pause();
+		bit++;
 	}
 }
 
-int	main(int ac, char **av)
+int	main(int argc, char **argv)
 {
-	int		pid;
-	char	*msg;
-	int		i;
+	pid_t				pid;
+	struct sigaction	act;
+	int					i;
 
-	if (ac != 3)
-		return (1);
-	pid = pid_atoi(av[1]);
-	msg = av[2];
+	if (argc != 3)
+		return (write(2, "Usage: ./client <PID> <message>\n", 32), 1);
+	pid = pid_atoi(argv[1]);
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+	act.sa_handler = ack_handler;
+	sigaction(SIGUSR1, &act, NULL);
 	i = 0;
-	while (msg[i])
-	{
-		send_char(pid, msg[i]);
-		i++;
-	}
+	while (argv[2][i])
+		send_char(pid, (unsigned char)argv[2][i++]);
+	send_char(pid, '\0'); /* fin de message */
 	return (0);
 }

@@ -17,11 +17,12 @@
 # include <unistd.h>
 # include <stdlib.h>
 
-void	char_maker(int signal);
-void	send_char(int pid, char c);
-void	ft_putstr(char *str);
+void	send_char(pid_t pid, unsigned char c);
+void	sig_handler(int sig, siginfo_t *info, void *ucontext);
+void	ack_handler(int sig);
 void	ft_putchar(char c);
+void	ft_putstr(char *str);
 void	ft_putnbr(int n);
-int		pid_atoi(char *pid);
+int     pid_atoi(char *pid);
 
 #endif
